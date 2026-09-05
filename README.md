@@ -18,32 +18,22 @@ Open [http://localhost:3000](http://localhost:3000).
 - Phone: `0821234567`
 - OTP: shown on screen in demo mode (also logged in the terminal)
 
+## Deploy (Netlify)
+
+1. Connect the GitHub repo `Gift404/hackathon` in the [Netlify dashboard](https://app.netlify.com)
+2. Build command: `npx prisma generate && next build` (already in `netlify.toml`)
+3. Set environment variables (see `.env.example`), especially:
+   - `DATABASE_URL` — PostgreSQL connection string
+   - `DEMO_MODE=true`
+   - `NEXT_PUBLIC_DEMO_MODE=true`
+   - `NEXTAUTH_SECRET` — any long random string
+   - `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` — your Netlify URL
+4. Deploy, then run seed once against production DB: `DATABASE_URL=... npm run db:seed`
+
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript
 - Tailwind CSS
-- Prisma + SQLite (swap to PostgreSQL for production)
+- Prisma + PostgreSQL
 - Zustand, React Hook Form + Zod, Recharts, qrcode.react, Sonner
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run db:push` | Push Prisma schema |
-| `npm run db:seed` | Seed Nomsa demo trader + 30 days of transactions |
-| `npm run db:studio` | Open Prisma Studio |
-
-## Demo flow
-
-1. Landing → Get started / Sign in as Nomsa
-2. Dashboard shows today’s earnings + tier + score
-3. Tap **+** → enter R150 → QR or phone request
-4. Tap **Simulate payment** → green success screen
-
-## Environment
-
-Copy `.env.example` to `.env`. With `DEMO_MODE=true`, Stitch, Smile Identity, and Twilio are mocked.
-
-For production PostgreSQL: set `provider = "postgresql"` in `prisma/schema.prisma` and update `DATABASE_URL`.
+- Hosting: Netlify

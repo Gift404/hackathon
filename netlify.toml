@@ -1,0 +1,11 @@
+[build]
+  command = "npx prisma generate && next build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  DEMO_MODE = "true"
+  NEXT_PUBLIC_DEMO_MODE = "true"
+  NEXT_PUBLIC_APP_NAME = "Imali Pay"
+
+# Next.js runtime is auto-detected by Netlify (OpenNext adapter)

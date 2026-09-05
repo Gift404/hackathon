@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Trader {
+  id               String   @id @default(cuid())
+  phone            String   @unique
+  idNumber         String   @unique
+  fullName         String
+  businessName     String?
+  tier             Int      @default(1)
+  dailyLimit       Float    @default(5000)
+  totalVerified    Float    @default(0)
+  livenessVerified Boolean  @default(false)
+  idVerified       Boolean  @default(false)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  transactions Transaction[]
+  paymentLinks PaymentLink[]
+}
+
+model Transaction {
+  id            String    @id @default(cuid())
+  traderId      String
+  trader        Trader    @relation(fields: [traderId], references: [id])
+  amount        Float
+  currency      String    @default("ZAR")
+  customerPhone String?
+  customerName  String?
+  method        String // "PAYSHAP_QR" | "PAYSHAP_PHONE" | "EFT"
+  status        String // "PENDING" | "COMPLETED" | "FAILED"
+  reference     String    @unique
+  stitchRef     String?
+  createdAt     DateTime  @default(now())
+  settledAt     DateTime?
+
+  @@index([traderId, createdAt])
+}
+
+model PaymentLink {
+  id        String   @id @default(cuid())
+  traderId  String
+  trader    Trader   @relation(fields: [traderId], references: [id])
+  amount    Float?
+  qrData    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([traderId])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, code])
+}

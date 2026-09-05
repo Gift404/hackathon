@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+:root {
+  --imali-gold: #f5a623;
+  --imali-gold-dark: #d4891a;
+  --imali-gold-light: #ffc857;
+  --imali-green: #2d8a4e;
+  --imali-green-dark: #1f6b3a;
+  --imali-green-light: #3daa62;
+  --imali-danger: #c0392b;
+  --imali-cream: #fdfaf5;
+  --imali-cream-dark: #f5efe6;
+  --imali-ink: #1a1a2e;
+  --imali-muted: #6b6b7b;
+  --imali-border: #ebe4d8;
+  --background: #fdfaf5;
+  --foreground: #1a1a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-gold: var(--imali-gold);
+  --color-gold-dark: var(--imali-gold-dark);
+  --color-gold-light: var(--imali-gold-light);
+  --color-green: var(--imali-green);
+  --color-green-dark: var(--imali-green-dark);
+  --color-green-light: var(--imali-green-light);
+  --color-danger: var(--imali-danger);
+  --color-cream: var(--imali-cream);
+  --color-cream-dark: var(--imali-cream-dark);
+  --color-ink: var(--imali-ink);
+  --color-muted: var(--imali-muted);
+  --color-border: var(--imali-border);
+  --font-heading: var(--font-poppins);
+  --font-body: var(--font-inter);
+  --radius-card: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), system-ui, sans-serif;
+}
+
+/* Soft atmospheric background */
+.imali-bg {
+  background-color: var(--imali-cream);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(245, 166, 35, 0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(45, 138, 78, 0.1), transparent),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(245, 166, 35, 0.08), transparent);
+}
+
+.imali-bg-dark {
+  background-color: var(--imali-ink);
+  background-image:
+    radial-gradient(ellipse 70% 40% at 20% 0%, rgba(245, 166, 35, 0.2), transparent),
+    radial-gradient(ellipse 50% 30% at 80% 100%, rgba(45, 138, 78, 0.15), transparent);
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes success-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+.animate-success-ring {
+  animation: success-ring 0.6s ease-out forwards;
+}
+
+.animate-float {
+  animation: float-y 3s ease-in-out infinite;
+}
+
+/* Safe area for mobile FAB */
+.pb-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}

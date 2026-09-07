@@ -13,8 +13,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-dvh pb-24 md:pb-8">
-      <div className="mx-auto max-w-lg px-4 sm:px-6">{children}</div>
+    <div className="min-h-dvh pb-24">
+      <div className="mx-auto max-w-lg px-4 sm:px-6 md:max-w-xl">{children}</div>
       <BottomNav />
     </div>
   );

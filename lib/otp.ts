@@ -1,7 +1,7 @@
 /**
- * OTP / SMS via Twilio.
+ * SMS via Twilio.
  * Sends real SMS whenever TWILIO_* credentials are set.
- * Falls back to console log (and demoCode in the API) otherwise.
+ * Falls back to console log otherwise.
  */
 
 function hasTwilio(): boolean {
@@ -12,19 +12,21 @@ function hasTwilio(): boolean {
   );
 }
 
-export async function sendOTP(phone: string, code: string): Promise<boolean> {
+function toE164(phone: string): string {
+  return phone.startsWith("+") ? phone : `+27${phone.replace(/\D/g, "").slice(1)}`;
+}
+
+export async function sendSms(phone: string, body: string): Promise<boolean> {
+  const to = toE164(phone);
+
   if (!hasTwilio()) {
-    console.log(`[DEMO OTP] Phone: ${phone} | Code: ${code}`);
-    console.log(
-      "[DEMO OTP] Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to .env for real SMS"
-    );
+    console.log(`[DEMO SMS] To: ${to} | ${body}`);
     return true;
   }
 
   const sid = process.env.TWILIO_ACCOUNT_SID!;
   const token = process.env.TWILIO_AUTH_TOKEN!;
   const from = process.env.TWILIO_PHONE_NUMBER!;
-  const to = phone.startsWith("+") ? phone : `+27${phone.slice(1)}`;
 
   try {
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
@@ -36,11 +38,7 @@ export async function sendOTP(phone: string, code: string): Promise<boolean> {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          To: to,
-          From: from,
-          Body: `Your EZIPAY code is ${code}. Valid for 5 minutes.`,
-        }),
+        body: new URLSearchParams({ To: to, From: from, Body: body }),
       }
     );
 
@@ -50,12 +48,34 @@ export async function sendOTP(phone: string, code: string): Promise<boolean> {
       return false;
     }
 
-    console.log(`[Twilio] OTP sent to ${to}`);
+    console.log(`[Twilio] SMS sent to ${to}`);
     return true;
   } catch (e) {
     console.error("Twilio send failed:", e);
     return false;
   }
+}
+
+export async function sendOTP(phone: string, code: string): Promise<boolean> {
+  return sendSms(
+    phone,
+    `Your EZIPAY code is ${code}. Valid for 5 minutes.`
+  );
+}
+
+export async function sendPaymentRequestSms(params: {
+  customerPhone: string;
+  traderName: string;
+  amountLabel: string;
+  paymentUrl?: string | null;
+}): Promise<boolean> {
+  const link = params.paymentUrl
+    ? ` Pay here: ${params.paymentUrl}`
+    : " Open your banking app to approve the PayShap request.";
+
+  const body = `EZIPAY: ${params.traderName} requests ${params.amountLabel}.${link}`;
+
+  return sendSms(params.customerPhone, body.slice(0, 320));
 }
 
 export function isSmsLive(): boolean {

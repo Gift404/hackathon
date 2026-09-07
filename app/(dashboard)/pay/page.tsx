@@ -34,6 +34,7 @@ export default function PayPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [qrData, setQrData] = useState("");
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [smsSent, setSmsSent] = useState(false);
   const [reference, setReference] = useState("");
   const [isMockPayment, setIsMockPayment] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -178,7 +179,13 @@ export default function PayPage() {
       setReference(data.reference);
       setPaymentUrl(data.paymentUrl || null);
       setIsMockPayment(data.mock !== false);
+      setSmsSent(Boolean(data.smsSent));
       setPhase("waiting");
+      if (data.smsSent) {
+        toast.success("SMS sent to customer");
+      } else {
+        toast.message("Request created — SMS may be delayed (Twilio trial limits)");
+      }
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -213,6 +220,7 @@ export default function PayPage() {
     setQrData("");
     setPaymentUrl(null);
     setIsMockPayment(true);
+    setSmsSent(false);
     setReference("");
     setSuccess(null);
   }
@@ -416,7 +424,9 @@ export default function PayPage() {
             </p>
           </div>
           <p className="text-sm text-muted">
-            They&apos;ll see a PayShap request in their banking app
+            {smsSent
+              ? "We sent them an SMS and a bank/PayShap request."
+              : "Bank/PayShap request created. SMS needs Twilio (verified numbers on trial)."}
           </p>
           {paymentUrl && !isMockPayment && (
             <a

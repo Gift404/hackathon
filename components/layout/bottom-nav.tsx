@@ -16,8 +16,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-white/95 backdrop-blur-md pb-safe md:hidden">
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-2 pt-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-white/95 backdrop-blur-md pb-safe">
+      <div className="mx-auto flex max-w-lg items-stretch justify-around px-2 pt-1 md:max-w-xl">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
@@ -25,7 +25,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-3 transition-colors",
+                "flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-3 transition-colors md:min-w-[80px]",
                 active ? "text-gold-dark" : "text-muted hover:text-ink"
               )}
             >
@@ -33,7 +33,7 @@ export function BottomNav() {
                 className={cn("h-5 w-5", active && "stroke-[2.5]")}
                 strokeWidth={active ? 2.5 : 2}
               />
-              <span className="text-[11px] font-medium">{label}</span>
+              <span className="text-[11px] font-medium md:text-xs">{label}</span>
             </Link>
           );
         })}

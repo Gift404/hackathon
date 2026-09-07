@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTrader } from "@/lib/auth";
-import { generateReference, normalizePhone, validateSAPhone } from "@/lib/utils";
+import {
+  generateReference,
+  normalizePhone,
+  validateSAPhone,
+  formatZAR,
+} from "@/lib/utils";
 import { initiatePayShapDebit } from "@/lib/stitch";
 import { randsToCents, centsToRands } from "@/lib/money";
 import { assertWithinDailyLimit } from "@/lib/limits";
+import { sendPaymentRequestSms } from "@/lib/otp";
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,12 +72,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const traderLabel =
+      trader.businessName?.trim() ||
+      trader.fullName.split(" ")[0] ||
+      "A trader";
+
+    const smsSent = await sendPaymentRequestSms({
+      customerPhone,
+      traderName: traderLabel,
+      amountLabel: formatZAR(centsToRands(amountCents)),
+      paymentUrl: stitch.paymentUrl,
+    });
+
     return NextResponse.json({
       reference,
       status: stitch.status,
       stitchRef: stitch.stitchRef,
       paymentUrl: stitch.paymentUrl,
       mock: stitch.mock,
+      smsSent,
     });
   } catch (e) {
     console.error(e);

@@ -2,6 +2,13 @@
 
 Digital payments for informal traders in South Africa. Accept PayShap payments with SA ID + phone — no card machine, no business bank account.
 
+## Live demo
+
+- **EZIPAY:** https://ezipay.netlify.app  
+- **Imali Pay (original Netlify name):** https://imalipay.netlify.app  
+
+Either URL may work depending on which Netlify site name is active — keep both for backup.
+
 ## Quick start (demo)
 
 ```bash

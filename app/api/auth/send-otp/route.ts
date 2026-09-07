@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateOTP, normalizePhone, validateSAPhone } from "@/lib/utils";
 import { sendOTP } from "@/lib/otp";
+import { hashOtp } from "@/lib/crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +17,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    const limited = rateLimit(`otp:${phone}:${ip}`, 5, 15 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Too many OTP requests. Try again in ${limited.retryAfterSec}s.` },
+        { status: 429 }
+      );
+    }
+
     const trader = await prisma.trader.findUnique({ where: { phone } });
     if (!trader) {
       return NextResponse.json(
@@ -25,9 +36,10 @@ export async function POST(req: NextRequest) {
 
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const codeHash = hashOtp(phone, code);
 
     await prisma.otpCode.create({
-      data: { phone, code, expiresAt },
+      data: { phone, codeHash, expiresAt },
     });
 
     await sendOTP(phone, code);

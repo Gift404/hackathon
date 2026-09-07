@@ -7,5 +7,8 @@
   DEMO_MODE = "true"
   NEXT_PUBLIC_DEMO_MODE = "true"
   NEXT_PUBLIC_APP_NAME = "EZIPAY"
+  # Set in Netlify UI (do not commit secrets):
+  # DATABASE_URL, SESSION_SECRET, NEXT_PUBLIC_APP_URL
+  # Optional live: STITCH_*, SMILE_*, TWILIO_*
 
 # Next.js runtime is auto-detected by Netlify (OpenNext adapter)

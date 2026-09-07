@@ -47,6 +47,7 @@ export interface DashboardData {
   todayCount: number;
   monthTotal: number;
   lastMonthTotal: number;
+  last7Days: { date: string; label: string; total: number }[];
   transactions: Transaction[];
   tier: number;
   tierProgress: number;

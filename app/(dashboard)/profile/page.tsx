@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   formatZAR,
   formatPhoneDisplay,
   getInitials,
   getAmountToNextTier,
   getTierProgress,
+  normalizePhone,
+  validateSAPhone,
 } from "@/lib/utils";
 import { TIER_CONFIG } from "@/types";
 import { useAuthStore } from "@/lib/store";
@@ -40,15 +43,24 @@ interface ProfileData {
   daysTrading: number;
 }
 
+type EditMode = null | "business" | "phone" | "phone-otp";
+
 export default function ProfilePage() {
   const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clear);
+  const setTrader = useAuthStore((s) => s.setTrader);
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const [editMode, setEditMode] = useState<EditMode>(null);
+  const [businessName, setBusinessName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [demoCode, setDemoCode] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/dashboard")
+  function loadProfile() {
+    return fetch("/api/dashboard")
       .then((r) => r.json())
       .then((d) => {
         const daysTrading = Math.max(
@@ -63,7 +75,12 @@ export default function ProfilePage() {
           score: d.score,
           daysTrading,
         });
-      })
+        setBusinessName(d.trader.businessName || "");
+      });
+  }
+
+  useEffect(() => {
+    loadProfile()
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -78,6 +95,102 @@ export default function ProfilePage() {
       toast.error("Could not sign out");
     } finally {
       setSigningOut(false);
+    }
+  }
+
+  async function saveBusinessName() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessName }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Could not save");
+        return;
+      }
+      toast.success("Business name updated");
+      setEditMode(null);
+      await loadProfile();
+      if (json.trader) {
+        setTrader({
+          traderId: json.trader.id,
+          fullName: json.trader.fullName,
+          phone: json.trader.phone,
+        });
+      }
+    } catch {
+      toast.error("Could not save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function requestPhoneChange() {
+    const phone = normalizePhone(newPhone);
+    if (!validateSAPhone(phone)) {
+      toast.error("Enter a valid SA mobile number");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request-phone", phone }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Could not send code");
+        return;
+      }
+      setDemoCode(json.demoCode || null);
+      setEditMode("phone-otp");
+      toast.success(json.demoCode ? `Demo OTP: ${json.demoCode}` : "OTP sent");
+    } catch {
+      toast.error("Could not send code");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmPhoneChange() {
+    const phone = normalizePhone(newPhone);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "confirm-phone",
+          phone,
+          code: otp,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Invalid code");
+        return;
+      }
+      toast.success("Phone number updated");
+      setEditMode(null);
+      setOtp("");
+      setNewPhone("");
+      setDemoCode(null);
+      await loadProfile();
+      if (json.trader) {
+        setTrader({
+          traderId: json.trader.id,
+          fullName: json.trader.fullName,
+          phone: json.trader.phone,
+        });
+      }
+    } catch {
+      toast.error("Could not update phone");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -99,7 +212,6 @@ export default function ProfilePage() {
     <div className="space-y-5 py-2 pb-8">
       <PageHeader title="Profile" />
 
-      {/* Trader card */}
       <Card className="flex items-center gap-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gold font-heading text-xl font-bold text-ink">
           {getInitials(trader.fullName)}
@@ -109,13 +221,15 @@ export default function ProfilePage() {
             {trader.fullName}
           </p>
           <p className="text-sm text-muted">{formatPhoneDisplay(trader.phone)}</p>
+          {trader.businessName && (
+            <p className="text-xs text-muted mt-0.5">{trader.businessName}</p>
+          )}
           <p className="text-xs text-muted mt-0.5">
             Member since {format(new Date(trader.createdAt), "MMM yyyy")}
           </p>
         </div>
       </Card>
 
-      {/* Merchant status */}
       <Card>
         <div className="flex items-center justify-between">
           <p className="font-heading font-bold text-ink">Merchant status</p>
@@ -155,7 +269,6 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Tier progression */}
       <Card>
         <p className="font-heading font-bold text-ink">Tier progression</p>
         <div className="mt-4 space-y-4">
@@ -210,7 +323,6 @@ export default function ProfilePage() {
         )}
       </Card>
 
-      {/* Financial identity */}
       <Card>
         <p className="font-heading font-bold text-ink">Financial identity</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -239,22 +351,103 @@ export default function ProfilePage() {
         </p>
       </Card>
 
-      {/* Settings */}
       <Card padding="sm">
-        <button
-          type="button"
-          className="flex w-full min-h-[48px] items-center px-2 text-left text-sm font-medium text-ink hover:bg-ink/5 rounded-lg"
-          onClick={() => toast.message("Coming soon — demo focus is payments")}
-        >
-          Change phone number
-        </button>
-        <button
-          type="button"
-          className="flex w-full min-h-[48px] items-center px-2 text-left text-sm font-medium text-ink hover:bg-ink/5 rounded-lg"
-          onClick={() => toast.message("Coming soon — demo focus is payments")}
-        >
-          Business name
-        </button>
+        {editMode === "business" ? (
+          <div className="space-y-3 p-2">
+            <Input
+              label="Business / stall name"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              maxLength={80}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button fullWidth loading={saving} onClick={saveBusinessName}>
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => {
+                  setEditMode(null);
+                  setBusinessName(trader.businessName || "");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : editMode === "phone" || editMode === "phone-otp" ? (
+          <div className="space-y-3 p-2">
+            <Input
+              label="New phone number"
+              placeholder="0821234567"
+              inputMode="tel"
+              maxLength={10}
+              value={newPhone}
+              disabled={editMode === "phone-otp"}
+              onChange={(e) =>
+                setNewPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+            />
+            {editMode === "phone-otp" && (
+              <>
+                <Input
+                  label="OTP code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                />
+                {demoCode && (
+                  <p className="text-xs text-gold-dark">Demo code: {demoCode}</p>
+                )}
+              </>
+            )}
+            <div className="flex gap-2">
+              {editMode === "phone" ? (
+                <Button fullWidth loading={saving} onClick={requestPhoneChange}>
+                  Send OTP
+                </Button>
+              ) : (
+                <Button fullWidth loading={saving} onClick={confirmPhoneChange}>
+                  Confirm
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => {
+                  setEditMode(null);
+                  setNewPhone("");
+                  setOtp("");
+                  setDemoCode(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="flex w-full min-h-[48px] items-center px-2 text-left text-sm font-medium text-ink hover:bg-ink/5 rounded-lg"
+              onClick={() => setEditMode("phone")}
+            >
+              Change phone number
+            </button>
+            <button
+              type="button"
+              className="flex w-full min-h-[48px] items-center px-2 text-left text-sm font-medium text-ink hover:bg-ink/5 rounded-lg"
+              onClick={() => setEditMode("business")}
+            >
+              Business name
+            </button>
+          </>
+        )}
         <Button
           variant="ghost"
           fullWidth

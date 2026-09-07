@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/utils";
-import { createSession } from "@/lib/auth";
+import { createSession, publicTrader } from "@/lib/auth";
+import { hashOtp } from "@/lib/crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,10 +18,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    const limited = rateLimit(`otp-verify:${phone}:${ip}`, 10, 15 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Too many attempts. Try again in ${limited.retryAfterSec}s.` },
+        { status: 429 }
+      );
+    }
+
+    const codeHash = hashOtp(phone, code);
     const otp = await prisma.otpCode.findFirst({
       where: {
         phone,
-        code,
+        codeHash,
         used: false,
         expiresAt: { gt: new Date() },
       },
@@ -47,16 +59,16 @@ export async function POST(req: NextRequest) {
     }
 
     await createSession(trader.id);
+    const pub = publicTrader(trader);
 
     return NextResponse.json({
-      token: trader.id,
       trader: {
-        id: trader.id,
-        phone: trader.phone,
-        fullName: trader.fullName,
-        businessName: trader.businessName,
-        tier: trader.tier,
-        dailyLimit: trader.dailyLimit,
+        id: pub.id,
+        phone: pub.phone,
+        fullName: pub.fullName,
+        businessName: pub.businessName,
+        tier: pub.tier,
+        dailyLimit: pub.dailyLimit,
       },
     });
   } catch (e) {

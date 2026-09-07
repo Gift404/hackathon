@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentTrader } from "@/lib/auth";
+import { getCurrentTrader, publicTrader, publicTransaction } from "@/lib/auth";
 import {
   calculateFinancialScore,
   getAmountToNextTier,
   getTierProgress,
 } from "@/lib/utils";
+import { centsToRands } from "@/lib/money";
 import {
   startOfDay,
   startOfMonth,
   subMonths,
   endOfMonth,
+  subDays,
+  format,
 } from "date-fns";
 
 export async function GET() {
@@ -25,8 +28,10 @@ export async function GET() {
     const monthStart = startOfMonth(now);
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
+    const weekStart = startOfDay(subDays(now, 6));
 
-    const [todayTx, monthTx, lastMonthTx, recent, allForScore] = await Promise.all([
+    const [todayTx, monthTx, lastMonthTx, recent, allForScore, weekTx] =
+      await Promise.all([
       prisma.transaction.findMany({
         where: {
           traderId: trader.id,
@@ -58,45 +63,59 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 200,
       }),
+      prisma.transaction.findMany({
+        where: {
+          traderId: trader.id,
+          status: "COMPLETED",
+          createdAt: { gte: weekStart },
+        },
+      }),
     ]);
 
-    const todayTotal = todayTx.reduce((s, t) => s + t.amount, 0);
-    const monthTotal = monthTx.reduce((s, t) => s + t.amount, 0);
-    const lastMonthTotal = lastMonthTx.reduce((s, t) => s + t.amount, 0);
+    const todayTotal = centsToRands(todayTx.reduce((s, t) => s + t.amountCents, 0));
+    const monthTotal = centsToRands(monthTx.reduce((s, t) => s + t.amountCents, 0));
+    const lastMonthTotal = centsToRands(
+      lastMonthTx.reduce((s, t) => s + t.amountCents, 0)
+    );
 
+    const byDay = new Map<string, number>();
+    for (let i = 6; i >= 0; i--) {
+      byDay.set(format(subDays(now, i), "yyyy-MM-dd"), 0);
+    }
+    for (const t of weekTx) {
+      const key = format(t.createdAt, "yyyy-MM-dd");
+      if (byDay.has(key)) {
+        byDay.set(key, (byDay.get(key) || 0) + t.amountCents);
+      }
+    }
+    const last7Days = Array.from(byDay.entries()).map(([date, cents]) => ({
+      date,
+      label: format(new Date(date + "T12:00:00"), "EEE"),
+      total: centsToRands(cents),
+    }));
+
+    const totalVerified = centsToRands(trader.totalVerifiedCents);
     const score = calculateFinancialScore({
-      totalVerified: trader.totalVerified,
-      transactions: allForScore,
+      totalVerified,
+      transactions: allForScore.map((t) => ({
+        amount: centsToRands(t.amountCents),
+        createdAt: t.createdAt,
+        status: t.status,
+      })),
       memberSince: trader.createdAt,
     });
 
     return NextResponse.json({
-      trader: {
-        id: trader.id,
-        phone: trader.phone,
-        idNumber: trader.idNumber,
-        fullName: trader.fullName,
-        businessName: trader.businessName,
-        tier: trader.tier,
-        dailyLimit: trader.dailyLimit,
-        totalVerified: trader.totalVerified,
-        livenessVerified: trader.livenessVerified,
-        idVerified: trader.idVerified,
-        active: trader.active,
-        createdAt: trader.createdAt.toISOString(),
-      },
+      trader: publicTrader(trader),
       todayTotal,
       todayCount: todayTx.length,
       monthTotal,
       lastMonthTotal,
-      transactions: recent.map((t) => ({
-        ...t,
-        createdAt: t.createdAt.toISOString(),
-        settledAt: t.settledAt?.toISOString() ?? null,
-      })),
+      last7Days,
+      transactions: recent.map(publicTransaction),
       tier: trader.tier,
-      tierProgress: getTierProgress(trader.totalVerified, trader.tier),
-      amountToNextTier: getAmountToNextTier(trader.totalVerified, trader.tier),
+      tierProgress: getTierProgress(totalVerified, trader.tier),
+      amountToNextTier: getAmountToNextTier(totalVerified, trader.tier),
       score,
     });
   } catch (e) {
@@ -104,3 +123,4 @@ export async function GET() {
     return NextResponse.json({ error: "Dashboard failed" }, { status: 500 });
   }
 }
+

@@ -1,3 +1,5 @@
+// CashTrail lessons applied: money is integer cents — never Float.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,51 +9,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PaymentMethod {
+  PAYSHAP_QR
+  PAYSHAP_PHONE
+  EFT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 model Trader {
-  id               String   @id @default(cuid())
-  phone            String   @unique
-  idNumber         String   @unique
-  fullName         String
-  businessName     String?
-  tier             Int      @default(1)
-  dailyLimit       Float    @default(5000)
-  totalVerified    Float    @default(0)
-  livenessVerified Boolean  @default(false)
-  idVerified       Boolean  @default(false)
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
+  id                  String   @id @default(cuid())
+  phone               String   @unique
+  idNumber            String   @unique
+  fullName            String
+  businessName        String?
+  tier                Int      @default(1)
+  dailyLimitCents     Int      @default(500000) // R5,000
+  totalVerifiedCents  Int      @default(0)
+  livenessVerified    Boolean  @default(false)
+  idVerified          Boolean  @default(false)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
   transactions Transaction[]
   paymentLinks PaymentLink[]
 }
 
 model Transaction {
-  id            String    @id @default(cuid())
+  id            String            @id @default(cuid())
   traderId      String
-  trader        Trader    @relation(fields: [traderId], references: [id])
-  amount        Float
-  currency      String    @default("ZAR")
+  trader        Trader            @relation(fields: [traderId], references: [id])
+  amountCents   Int
+  currency      String            @default("ZAR")
   customerPhone String?
   customerName  String?
-  method        String // "PAYSHAP_QR" | "PAYSHAP_PHONE" | "EFT"
-  status        String // "PENDING" | "COMPLETED" | "FAILED"
-  reference     String    @unique
+  method        PaymentMethod
+  status        TransactionStatus @default(PENDING)
+  reference     String            @unique
   stitchRef     String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime          @default(now())
   settledAt     DateTime?
 
   @@index([traderId, createdAt])
+  @@index([stitchRef])
 }
 
 model PaymentLink {
-  id        String   @id @default(cuid())
-  traderId  String
-  trader    Trader   @relation(fields: [traderId], references: [id])
-  amount    Float?
-  qrData    String
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  traderId    String
+  trader      Trader   @relation(fields: [traderId], references: [id])
+  amountCents Int?
+  reference   String?  @unique
+  qrData      String
+  expiresAt   DateTime
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   @@index([traderId])
 }
@@ -59,10 +75,10 @@ model PaymentLink {
 model OtpCode {
   id        String   @id @default(cuid())
   phone     String
-  code      String
+  codeHash  String
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  @@index([phone, code])
+  @@index([phone, codeHash])
 }

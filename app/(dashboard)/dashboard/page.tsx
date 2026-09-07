@@ -101,6 +101,30 @@ export default function DashboardPage() {
         </div>
       </Card>
 
+      {/* Last 7 days */}
+      {data.last7Days?.length > 0 && (
+        <Card className="animate-fade-up" style={{ animationDelay: "80ms" }}>
+          <p className="text-sm font-semibold text-ink">Last 7 days</p>
+          <div className="mt-4 flex h-28 items-end gap-1.5">
+            {(() => {
+              const max = Math.max(...data.last7Days.map((d) => d.total), 1);
+              return data.last7Days.map((d) => (
+                <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded-t-md bg-gold/90 transition-all"
+                    style={{
+                      height: `${Math.max(8, (d.total / max) * 100)}%`,
+                    }}
+                    title={formatZAR(d.total)}
+                  />
+                  <span className="text-[10px] text-muted">{d.label}</span>
+                </div>
+              ));
+            })()}
+          </div>
+        </Card>
+      )}
+
       {/* Tier progress */}
       <Card>
         <p className="text-sm font-semibold text-ink">Tier progress</p>

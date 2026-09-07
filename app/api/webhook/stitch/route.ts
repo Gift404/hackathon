@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyWebhookSignature } from "@/lib/stitch";
-import { getTierFromTurnover } from "@/lib/utils";
+import {
+  parseStitchWebhookPayload,
+  verifyWebhookSignature,
+} from "@/lib/stitch";
+import { completePaymentOnce } from "@/lib/settlement";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,13 +15,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const payload = JSON.parse(raw);
-    const stitchRef = payload.stitchRef || payload.reference || payload.id;
-    const status = payload.status === "completed" || payload.status === "COMPLETED"
-      ? "COMPLETED"
-      : payload.status === "failed" || payload.status === "FAILED"
-        ? "FAILED"
-        : "PENDING";
+    let payload: unknown;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const { stitchRef, status } = parseStitchWebhookPayload(payload);
+    if (!stitchRef) {
+      return NextResponse.json({ error: "Missing payment id" }, { status: 400 });
+    }
 
     const tx = await prisma.transaction.findFirst({
       where: {
@@ -30,35 +37,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    if (tx.status === "COMPLETED") {
-      return NextResponse.json({ ok: true, alreadyProcessed: true });
+    if (tx.status === "COMPLETED" || tx.status === "FAILED") {
+      return NextResponse.json({
+        ok: true,
+        alreadyProcessed: true,
+        status: tx.status,
+      });
     }
 
-    await prisma.transaction.update({
-      where: { id: tx.id },
-      data: {
-        status,
-        settledAt: status === "COMPLETED" ? new Date() : null,
-      },
-    });
+    if (status === "FAILED") {
+      await prisma.transaction.updateMany({
+        where: { id: tx.id, status: "PENDING" },
+        data: { status: "FAILED" },
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     if (status === "COMPLETED") {
-      const trader = await prisma.trader.findUnique({ where: { id: tx.traderId } });
-      if (trader) {
-        const newTotal = trader.totalVerified + tx.amount;
-        const tierInfo = getTierFromTurnover(newTotal);
-        await prisma.trader.update({
-          where: { id: trader.id },
-          data: {
-            totalVerified: newTotal,
-            tier: tierInfo.tier,
-            dailyLimit: tierInfo.dailyLimit,
-          },
-        });
-      }
+      const result = await completePaymentOnce({
+        transactionId: tx.id,
+        traderId: tx.traderId,
+        amountCents: tx.amountCents,
+        reference: tx.reference,
+        method: tx.method,
+      });
+      return NextResponse.json({
+        ok: true,
+        completed: result.completed,
+        alreadyProcessed: !result.completed,
+      });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, status: "PENDING" });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Webhook failed" }, { status: 500 });

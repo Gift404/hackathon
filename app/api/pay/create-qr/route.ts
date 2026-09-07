@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentTrader } from "@/lib/auth";
 import { generateReference } from "@/lib/utils";
 import { createPayShapQR } from "@/lib/stitch";
+import { randsToCents, centsToRands } from "@/lib/money";
+import { assertWithinDailyLimit } from "@/lib/limits";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,24 +18,38 @@ export async function POST(req: NextRequest) {
     if (!amount || amount < 1) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
-    if (amount > trader.dailyLimit) {
+
+    const amountCents = randsToCents(amount);
+    if (amountCents > trader.dailyLimitCents) {
       return NextResponse.json(
-        { error: `Amount exceeds daily limit of R${trader.dailyLimit}` },
+        {
+          error: `Single payment cannot exceed your daily limit of R${centsToRands(trader.dailyLimitCents).toFixed(2)}`,
+        },
         { status: 400 }
       );
+    }
+    const limitCheck = await assertWithinDailyLimit({
+      traderId: trader.id,
+      dailyLimitCents: trader.dailyLimitCents,
+      amountCents,
+    });
+    if (!limitCheck.ok) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 400 });
     }
 
     const reference = generateReference();
     const stitch = await createPayShapQR({
-      amount,
+      amount: centsToRands(amountCents),
       reference,
       traderPhone: trader.phone,
+      traderId: trader.id,
     });
 
     const link = await prisma.paymentLink.create({
       data: {
         traderId: trader.id,
-        amount,
+        amountCents,
+        reference,
         qrData: stitch.qrData,
         expiresAt: stitch.expiresAt,
       },
@@ -42,7 +58,7 @@ export async function POST(req: NextRequest) {
     await prisma.transaction.create({
       data: {
         traderId: trader.id,
-        amount,
+        amountCents,
         method: "PAYSHAP_QR",
         status: "PENDING",
         reference,
@@ -53,12 +69,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       qrData: stitch.qrData,
+      paymentUrl: stitch.paymentUrl,
       linkId: link.id,
       reference,
       expiresAt: stitch.expiresAt.toISOString(),
+      mock: stitch.mock,
     });
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ error: "Failed to create QR" }, { status: 500 });
+    const message = e instanceof Error ? e.message : "Failed to create QR";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

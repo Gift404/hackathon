@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatZAR, validateSAPhone, normalizePhone, maskPhone } from "@/lib/utils";
+import { formatZAR, validateSAPhone, normalizePhone, maskPhone, parseAmountRands } from "@/lib/utils";
 import { CheckCircle2, Delete, QrCode, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,12 +33,27 @@ export default function PayPage() {
   const [phase, setPhase] = useState<Phase>("amount");
   const [customerPhone, setCustomerPhone] = useState("");
   const [qrData, setQrData] = useState("");
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [reference, setReference] = useState("");
+  const [isMockPayment, setIsMockPayment] = useState(true);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<SuccessData | null>(null);
   const [phoneError, setPhoneError] = useState("");
+  const [dailyLimit, setDailyLimit] = useState(5000);
+  const [remaining, setRemaining] = useState(5000);
 
-  const amount = parseFloat(amountStr) || 0;
+  const amount = parseAmountRands(amountStr);
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setDailyLimit(data.dailyLimit ?? 5000);
+        setRemaining(data.remaining ?? data.dailyLimit ?? 5000);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const pollStatus = useCallback(
     async (ref: string) => {
@@ -103,8 +118,10 @@ export default function PayPage() {
       toast.error("Enter an amount of at least R1");
       return;
     }
-    if (amount > 5000) {
-      toast.error("Amount exceeds your daily limit");
+    if (amount > remaining) {
+      toast.error(
+        `Amount exceeds remaining daily limit (${formatZAR(remaining)} of ${formatZAR(dailyLimit)})`
+      );
       return;
     }
     setPhase("method");
@@ -125,6 +142,8 @@ export default function PayPage() {
         return;
       }
       setQrData(data.qrData);
+      setPaymentUrl(data.paymentUrl || null);
+      setIsMockPayment(data.mock !== false);
       setReference(data.reference);
       setPhase("qr");
     } catch {
@@ -157,6 +176,8 @@ export default function PayPage() {
         return;
       }
       setReference(data.reference);
+      setPaymentUrl(data.paymentUrl || null);
+      setIsMockPayment(data.mock !== false);
       setPhase("waiting");
     } catch {
       toast.error("Something went wrong");
@@ -190,6 +211,8 @@ export default function PayPage() {
     setPhase("amount");
     setCustomerPhone("");
     setQrData("");
+    setPaymentUrl(null);
+    setIsMockPayment(true);
     setReference("");
     setSuccess(null);
   }
@@ -246,6 +269,11 @@ export default function PayPage() {
               className="w-full max-w-[240px] bg-transparent text-center font-heading text-6xl font-extrabold text-ink outline-none"
             />
           </div>
+          <p className="text-center text-sm text-muted">
+            Remaining today:{" "}
+            <span className="font-semibold text-ink">{formatZAR(remaining)}</span>
+            {" · "}limit {formatZAR(dailyLimit)}
+          </p>
 
           <div className="mx-auto grid max-w-xs grid-cols-3 gap-3">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map(
@@ -355,7 +383,17 @@ export default function PayPage() {
           <p className="animate-pulse-soft text-sm font-medium text-gold-dark">
             Waiting for payment…
           </p>
-          {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+          {paymentUrl && !isMockPayment && (
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-sm font-medium text-green underline"
+            >
+              Open Stitch payment page
+            </a>
+          )}
+          {(process.env.NEXT_PUBLIC_DEMO_MODE === "true" || isMockPayment) && (
             <Button variant="secondary" fullWidth loading={loading} onClick={simulatePayment}>
               Simulate payment received
             </Button>
@@ -380,7 +418,17 @@ export default function PayPage() {
           <p className="text-sm text-muted">
             They&apos;ll see a PayShap request in their banking app
           </p>
-          {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+          {paymentUrl && !isMockPayment && (
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-sm font-medium text-green underline"
+            >
+              Open payment link (share with customer)
+            </a>
+          )}
+          {(process.env.NEXT_PUBLIC_DEMO_MODE === "true" || isMockPayment) && (
             <Button variant="secondary" fullWidth loading={loading} onClick={simulatePayment}>
               Simulate approval
             </Button>

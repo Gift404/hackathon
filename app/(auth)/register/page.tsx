@@ -70,13 +70,6 @@ export default function RegisterPage() {
 
   async function handleLivenessSuccess() {
     store.setLivenessDone(true);
-    if (traderResult) {
-      await fetch("/api/register/liveness", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ traderId: traderResult.id }),
-      });
-    }
     store.setStep(3);
   }
 

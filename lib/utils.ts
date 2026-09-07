@@ -79,6 +79,15 @@ export function generateReference(): string {
   return `EZI-${ts}-${rand}`;
 }
 
+/** Parse keypad amount safely to 2dp rands (avoids float keypad junk). */
+export function parseAmountRands(input: string): number {
+  const cleaned = input.replace(/[^\d.]/g, "");
+  if (!cleaned || cleaned === ".") return 0;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
 export function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";

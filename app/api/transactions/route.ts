@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentTrader } from "@/lib/auth";
+import { getCurrentTrader, publicTransaction } from "@/lib/auth";
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns";
 
 export async function GET(req: NextRequest) {
@@ -27,11 +27,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      transactions: transactions.map((t) => ({
-        ...t,
-        createdAt: t.createdAt.toISOString(),
-        settledAt: t.settledAt?.toISOString() ?? null,
-      })),
+      transactions: transactions.map(publicTransaction),
     });
   } catch (e) {
     console.error(e);

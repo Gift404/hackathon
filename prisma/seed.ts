@@ -30,6 +30,10 @@ function randomBetween(min: number, max: number) {
   return Math.round((Math.random() * (max - min) + min) * 100) / 100;
 }
 
+function randsToCents(rands: number): number {
+  return Math.round(rands * 100);
+}
+
 function daysAgo(n: number, hour = 12, minute = 0) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -45,7 +49,6 @@ async function main() {
   await prisma.otpCode.deleteMany();
   await prisma.trader.deleteMany();
 
-  // Valid Luhn SA ID (brief listed 9001015009087; checksum digit is 6)
   const trader = await prisma.trader.create({
     data: {
       phone: "0821234567",
@@ -53,8 +56,8 @@ async function main() {
       fullName: "Nomsa Dlamini",
       businessName: "Nomsa's Spaza Shop",
       tier: 1,
-      dailyLimit: 5000,
-      totalVerified: 0,
+      dailyLimitCents: randsToCents(5000),
+      totalVerifiedCents: 0,
       livenessVerified: true,
       idVerified: true,
       createdAt: daysAgo(45),
@@ -63,27 +66,24 @@ async function main() {
 
   const transactions: {
     traderId: string;
-    amount: number;
+    amountCents: number;
     currency: string;
     customerPhone: string | null;
     customerName: string | null;
-    method: string;
-    status: string;
+    method: "PAYSHAP_QR" | "PAYSHAP_PHONE";
+    status: "COMPLETED";
     reference: string;
     stitchRef: string;
     createdAt: Date;
     settledAt: Date;
   }[] = [];
 
-  // Spread ~R28,450 across last 30 days + a strong "today"
-  let running = 0;
-  const target = 28450;
+  let runningCents = 0;
+  const targetCents = randsToCents(28450);
 
-  // Today: ~R2,340 across 14 transactions
   const todayAmounts = [
     150, 85, 200, 45, 120, 300, 75, 180, 95, 220, 160, 110, 250, 350,
   ];
-  // adjust last to hit ~2340
   const todaySum = todayAmounts.reduce((a, b) => a + b, 0);
   todayAmounts[todayAmounts.length - 1] += 2340 - todaySum;
 
@@ -93,9 +93,10 @@ async function main() {
     const createdAt = daysAgo(0, hour, minute);
     const method = i % 3 === 0 ? "PAYSHAP_PHONE" : "PAYSHAP_QR";
     const ref = `SEED-TODAY-${i + 1}`;
+    const amountCents = randsToCents(amount);
     transactions.push({
       traderId: trader.id,
-      amount,
+      amountCents,
       currency: "ZAR",
       customerPhone: method === "PAYSHAP_PHONE" ? PHONES[i % PHONES.length] : null,
       customerName: CUSTOMER_NAMES[i % CUSTOMER_NAMES.length],
@@ -106,18 +107,17 @@ async function main() {
       createdAt,
       settledAt: createdAt,
     });
-    running += amount;
+    runningCents += amountCents;
   });
 
-  // Remaining days: fill to ~28,450
   let day = 1;
   let idx = 0;
-  while (running < target - 50 && day <= 29) {
+  while (runningCents < targetCents - 5000 && day <= 29) {
     const count = 2 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < count && running < target; i++) {
-      const remaining = target - running;
+    for (let i = 0; i < count && runningCents < targetCents; i++) {
+      const remainingCents = targetCents - runningCents;
       const amount = Math.min(
-        remaining,
+        remainingCents / 100,
         Math.round(randomBetween(20, 500) * 100) / 100
       );
       if (amount < 20) break;
@@ -126,9 +126,10 @@ async function main() {
       const createdAt = daysAgo(day, hour, minute);
       const method = idx % 2 === 0 ? "PAYSHAP_QR" : "PAYSHAP_PHONE";
       const ref = `SEED-D${day}-${i}-${idx}`;
+      const amountCents = randsToCents(amount);
       transactions.push({
         traderId: trader.id,
-        amount,
+        amountCents,
         currency: "ZAR",
         customerPhone:
           method === "PAYSHAP_PHONE" ? PHONES[idx % PHONES.length] : null,
@@ -140,13 +141,12 @@ async function main() {
         createdAt,
         settledAt: createdAt,
       });
-      running += amount;
+      runningCents += amountCents;
       idx++;
     }
     day++;
   }
 
-  // Batch insert
   const batchSize = 50;
   for (let i = 0; i < transactions.length; i += batchSize) {
     await prisma.transaction.createMany({
@@ -156,12 +156,12 @@ async function main() {
 
   await prisma.trader.update({
     where: { id: trader.id },
-    data: { totalVerified: Math.round(running * 100) / 100 },
+    data: { totalVerifiedCents: runningCents },
   });
 
   console.log(`Created trader: ${trader.fullName} (${trader.phone})`);
   console.log(`Created ${transactions.length} transactions`);
-  console.log(`Total verified: R${running.toFixed(2)}`);
+  console.log(`Total verified: R${(runningCents / 100).toFixed(2)}`);
   console.log("Demo login: 0821234567 (OTP shown in demo mode)");
 }
 

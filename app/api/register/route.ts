@@ -6,6 +6,9 @@ import {
   validateSAPhone,
 } from "@/lib/utils";
 import { verifySAID } from "@/lib/smile-identity";
+import { createSession, publicTrader } from "@/lib/auth";
+import { randsToCents } from "@/lib/money";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +16,15 @@ export async function POST(req: NextRequest) {
     const fullName = String(body.fullName || "").trim();
     const idNumber = String(body.idNumber || "").replace(/\D/g, "");
     const phone = normalizePhone(body.phone || "");
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    const limited = rateLimit(`register:${ip}`, 10, 60 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Too many registrations. Try again in ${limited.retryAfterSec}s.` },
+        { status: 429 }
+      );
+    }
 
     if (!fullName || fullName.length < 2) {
       return NextResponse.json({ error: "Full name is required" }, { status: 400 });
@@ -57,20 +69,25 @@ export async function POST(req: NextRequest) {
         idNumber,
         phone,
         tier: 1,
-        dailyLimit: 5000,
+        dailyLimitCents: randsToCents(5000),
         idVerified: true,
         livenessVerified: false,
       },
     });
 
+    // Session so liveness can only update the authenticated new trader
+    await createSession(trader.id);
+    const pub = publicTrader(trader);
+
     return NextResponse.json({
       trader: {
-        id: trader.id,
-        fullName: trader.fullName,
-        phone: trader.phone,
-        tier: trader.tier,
-        dailyLimit: trader.dailyLimit,
+        id: pub.id,
+        fullName: pub.fullName,
+        phone: pub.phone,
+        tier: pub.tier,
+        dailyLimit: pub.dailyLimit,
       },
+      idVerificationMock: idCheck.mock,
     });
   } catch (e) {
     console.error(e);

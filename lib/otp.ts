@@ -28,7 +28,7 @@ export async function sendOTP(phone: string, code: string): Promise<boolean> {
         body: new URLSearchParams({
           To: phone.startsWith("+") ? phone : `+27${phone.slice(1)}`,
           From: from,
-          Body: `Your Imali Pay code is ${code}. Valid for 5 minutes.`,
+          Body: `Your EZIPAY code is ${code}. Valid for 5 minutes.`,
         }),
       }
     );

@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --imali-gold: #f5a623;
-  --imali-gold-dark: #d4891a;
-  --imali-gold-light: #ffc857;
-  --imali-green: #2d8a4e;
-  --imali-green-dark: #1f6b3a;
-  --imali-green-light: #3daa62;
-  --imali-danger: #c0392b;
-  --imali-cream: #fdfaf5;
-  --imali-cream-dark: #f5efe6;
-  --imali-ink: #1a1a2e;
-  --imali-muted: #6b6b7b;
-  --imali-border: #ebe4d8;
+  --ezipay-gold: #f5a623;
+  --ezipay-gold-dark: #d4891a;
+  --ezipay-gold-light: #ffc857;
+  --ezipay-green: #2d8a4e;
+  --ezipay-green-dark: #1f6b3a;
+  --ezipay-green-light: #3daa62;
+  --ezipay-danger: #c0392b;
+  --ezipay-cream: #fdfaf5;
+  --ezipay-cream-dark: #f5efe6;
+  --ezipay-ink: #1a1a2e;
+  --ezipay-muted: #6b6b7b;
+  --ezipay-border: #ebe4d8;
   --background: #fdfaf5;
   --foreground: #1a1a2e;
 }
@@ -20,18 +20,18 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-gold: var(--imali-gold);
-  --color-gold-dark: var(--imali-gold-dark);
-  --color-gold-light: var(--imali-gold-light);
-  --color-green: var(--imali-green);
-  --color-green-dark: var(--imali-green-dark);
-  --color-green-light: var(--imali-green-light);
-  --color-danger: var(--imali-danger);
-  --color-cream: var(--imali-cream);
-  --color-cream-dark: var(--imali-cream-dark);
-  --color-ink: var(--imali-ink);
-  --color-muted: var(--imali-muted);
-  --color-border: var(--imali-border);
+  --color-gold: var(--ezipay-gold);
+  --color-gold-dark: var(--ezipay-gold-dark);
+  --color-gold-light: var(--ezipay-gold-light);
+  --color-green: var(--ezipay-green);
+  --color-green-dark: var(--ezipay-green-dark);
+  --color-green-light: var(--ezipay-green-light);
+  --color-danger: var(--ezipay-danger);
+  --color-cream: var(--ezipay-cream);
+  --color-cream-dark: var(--ezipay-cream-dark);
+  --color-ink: var(--ezipay-ink);
+  --color-muted: var(--ezipay-muted);
+  --color-border: var(--ezipay-border);
   --font-heading: var(--font-poppins);
   --font-body: var(--font-inter);
   --radius-card: 14px;
@@ -63,16 +63,16 @@ h6 {
 }
 
 /* Soft atmospheric background */
-.imali-bg {
-  background-color: var(--imali-cream);
+.ezipay-bg {
+  background-color: var(--ezipay-cream);
   background-image:
     radial-gradient(ellipse 80% 50% at 10% -10%, rgba(245, 166, 35, 0.18), transparent),
     radial-gradient(ellipse 60% 40% at 90% 0%, rgba(45, 138, 78, 0.1), transparent),
     radial-gradient(ellipse 50% 30% at 50% 100%, rgba(245, 166, 35, 0.08), transparent);
 }
 
-.imali-bg-dark {
-  background-color: var(--imali-ink);
+.ezipay-bg-dark {
+  background-color: var(--ezipay-ink);
   background-image:
     radial-gradient(ellipse 70% 40% at 20% 0%, rgba(245, 166, 35, 0.2), transparent),
     radial-gradient(ellipse 50% 30% at 80% 100%, rgba(45, 138, 78, 0.15), transparent);

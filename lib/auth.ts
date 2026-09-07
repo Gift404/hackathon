@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 
-const SESSION_COOKIE = "imali_session";
+const SESSION_COOKIE = "ezipay_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function createSession(traderId: string) {

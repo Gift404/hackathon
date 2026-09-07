@@ -28,10 +28,10 @@ export function Logo({
           s.icon
         )}
       >
-        i
+        E
       </span>
       <span className={cn("font-heading font-bold text-ink tracking-tight", s.text)}>
-        Imali <span className="text-gold-dark">Pay</span>
+        EZI<span className="text-gold-dark">PAY</span>
       </span>
     </Link>
   );

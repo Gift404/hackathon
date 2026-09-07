@@ -228,7 +228,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <h1 className="font-heading text-2xl font-bold text-ink">
-                Welcome to Imali Pay
+                Welcome to EZIPAY
                 {traderResult ? `, ${traderResult.fullName.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-2 text-muted">You&apos;re ready to accept payments</p>

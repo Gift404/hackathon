@@ -16,11 +16,11 @@ export default function Icon() {
           background: "#F5A623",
           borderRadius: 8,
           color: "#1A1A2E",
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 700,
         }}
       >
-        i
+        E
       </div>
     ),
     { ...size }

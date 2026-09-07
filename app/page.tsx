@@ -138,11 +138,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Why Imali Pay */}
+      {/* Why EZIPAY */}
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <h2 className="text-center font-heading text-3xl font-bold text-ink sm:text-4xl">
-            Why Imali Pay
+            Why EZIPAY
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-center text-muted">
             Built for spaza shops, street vendors, and market stalls.
@@ -204,7 +204,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <Logo size="sm" />
           <p className="text-sm text-muted">
-            © {new Date().getFullYear()} Imali Pay. All rights reserved.
+            © {new Date().getFullYear()} EZIPAY. All rights reserved.
           </p>
         </div>
       </footer>

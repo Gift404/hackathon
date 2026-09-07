@@ -38,7 +38,7 @@ function daysAgo(n: number, hour = 12, minute = 0) {
 }
 
 async function main() {
-  console.log("Seeding Imali Pay demo data...");
+  console.log("Seeding EZIPAY demo data...");
 
   await prisma.transaction.deleteMany();
   await prisma.paymentLink.deleteMany();

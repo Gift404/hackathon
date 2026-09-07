@@ -16,10 +16,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Imali Pay — Digital payments for informal traders",
+  title: "EZIPAY — Digital payments for informal traders",
   description:
     "Accept PayShap payments with just your SA ID and phone. No card machine, no business bank account.",
-  applicationName: "Imali Pay",
+  applicationName: "EZIPAY",
 };
 
 export const viewport: Viewport = {
@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${inter.variable} antialiased imali-bg`}>
+      <body className={`${poppins.variable} ${inter.variable} antialiased ezipay-bg`}>
         {children}
         <Toaster position="top-center" richColors closeButton />
       </body>

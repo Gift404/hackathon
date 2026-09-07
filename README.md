@@ -1,4 +1,4 @@
-# Imali Pay
+# EZIPAY
 
 Digital payments for informal traders in South Africa. Accept PayShap payments with SA ID + phone — no card machine, no business bank account.
 
@@ -28,6 +28,7 @@ Open [http://localhost:3000](http://localhost:3000).
    - `NEXT_PUBLIC_DEMO_MODE=true`
    - `NEXTAUTH_SECRET` — any long random string
    - `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` — your Netlify URL
+   - `NEXT_PUBLIC_APP_NAME=EZIPAY`
 4. Deploy, then run seed once against production DB: `DATABASE_URL=... npm run db:seed`
 
 ## Stack

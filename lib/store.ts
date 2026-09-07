@@ -33,7 +33,7 @@ export const useRegisterStore = create<RegisterStore>()(
       setLivenessDone: (livenessDone) => set({ livenessDone }),
       reset: () => set(initial),
     }),
-    { name: "imali-register-draft" }
+    { name: "ezipay-register-draft" }
   )
 );
 
@@ -54,6 +54,6 @@ export const useAuthStore = create<AuthStore>()(
       setTrader: (data) => set(data),
       clear: () => set({ traderId: null, fullName: null, phone: null }),
     }),
-    { name: "imali-auth" }
+    { name: "ezipay-auth" }
   )
 );

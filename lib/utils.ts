@@ -76,7 +76,7 @@ export function generateOTP(): string {
 export function generateReference(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `IMP-${ts}-${rand}`;
+  return `EZI-${ts}-${rand}`;
 }
 
 export function getGreeting(): string {

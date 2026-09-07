@@ -44,9 +44,15 @@ export async function POST(req: NextRequest) {
 
     await sendOTP(phone, code);
 
-    const demo = process.env.DEMO_MODE === "true";
+    const demo =
+      process.env.DEMO_MODE === "true" ||
+      !process.env.TWILIO_ACCOUNT_SID ||
+      !process.env.TWILIO_AUTH_TOKEN ||
+      !process.env.TWILIO_PHONE_NUMBER;
+
     return NextResponse.json({
       success: true,
+      // Only return demoCode when SMS is not live — never leak OTP when Twilio is on
       ...(demo ? { demoCode: code } : {}),
     });
   } catch (e) {

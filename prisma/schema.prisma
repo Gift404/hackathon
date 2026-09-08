@@ -51,6 +51,9 @@ model Transaction {
   status        TransactionStatus @default(PENDING)
   reference     String            @unique
   stitchRef     String?
+  /// Hashed SMS PIN the customer receives for phone-pay confirmation (no gateway).
+  approvalPinHash      String?
+  approvalPinExpiresAt DateTime?
   createdAt     DateTime          @default(now())
   settledAt     DateTime?
 

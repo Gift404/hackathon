@@ -1,5 +1,5 @@
 [build]
-  command = "npx prisma generate && next build"
+  command = "npx prisma generate && npx prisma db push && next build"
   publish = ".next"
 
 [build.environment]
@@ -9,6 +9,9 @@
   NEXT_PUBLIC_APP_NAME = "EZIPAY"
   # Set in Netlify UI (do not commit secrets):
   # DATABASE_URL, SESSION_SECRET, NEXT_PUBLIC_APP_URL
-  # Optional live: STITCH_*, SMILE_*, TWILIO_*
+  # Twilio (real SMS for login OTP + customer payment PIN):
+  # TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+  # DEMO_MODE mocks Stitch/Smile only — it does NOT disable Twilio.
+  # Optional: STITCH_*, SMILE_*
 
 # Next.js runtime is auto-detected by Netlify (OpenNext adapter)

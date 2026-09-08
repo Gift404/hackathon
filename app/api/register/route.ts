@@ -45,7 +45,12 @@ export async function POST(req: NextRequest) {
     const existingPhone = await prisma.trader.findUnique({ where: { phone } });
     if (existingPhone) {
       return NextResponse.json(
-        { error: "An account with this phone already exists. Please sign in." },
+        {
+          error:
+            "An account with this phone already exists. Please sign in with that number.",
+          code: "PHONE_EXISTS",
+          loginPhone: phone,
+        },
         { status: 409 }
       );
     }
@@ -53,7 +58,16 @@ export async function POST(req: NextRequest) {
     const existingId = await prisma.trader.findUnique({ where: { idNumber } });
     if (existingId) {
       return NextResponse.json(
-        { error: "An account with this ID number already exists." },
+        {
+          error:
+            "An account with this ID number already exists. Sign in with the phone number you used when you registered.",
+          code: "ID_EXISTS",
+          // Hint which phone is on file (masked) so they can log in
+          loginPhoneHint: existingId.phone.replace(
+            /^(\d{3})\d+(\d{3})$/,
+            "$1***$2"
+          ),
+        },
         { status: 409 }
       );
     }

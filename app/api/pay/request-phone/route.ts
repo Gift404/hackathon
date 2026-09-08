@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentTrader } from "@/lib/auth";
 import {
   generateReference,
+  generateOTP,
   normalizePhone,
   validateSAPhone,
   formatZAR,
@@ -10,7 +11,8 @@ import {
 import { initiatePayShapDebit } from "@/lib/stitch";
 import { randsToCents, centsToRands } from "@/lib/money";
 import { assertWithinDailyLimit } from "@/lib/limits";
-import { sendPaymentRequestSms } from "@/lib/otp";
+import { sendPaymentPinSms, isSmsLive } from "@/lib/otp";
+import { hashOtp } from "@/lib/crypto";
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,6 +62,11 @@ export async function POST(req: NextRequest) {
       traderId: trader.id,
     });
 
+    // SMS PIN is the approval path until a live payment gateway is wired.
+    const pin = generateOTP();
+    const pinExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const approvalPinHash = hashOtp(`${reference}:${customerPhone}`, pin);
+
     await prisma.transaction.create({
       data: {
         traderId: trader.id,
@@ -69,6 +76,8 @@ export async function POST(req: NextRequest) {
         reference,
         stitchRef: stitch.stitchRef,
         customerPhone,
+        approvalPinHash,
+        approvalPinExpiresAt: pinExpiresAt,
       },
     });
 
@@ -77,20 +86,46 @@ export async function POST(req: NextRequest) {
       trader.fullName.split(" ")[0] ||
       "A trader";
 
-    const smsSent = await sendPaymentRequestSms({
+    const amountLabel = formatZAR(centsToRands(amountCents));
+    const smsLive = isSmsLive();
+    const smsSent = await sendPaymentPinSms({
       customerPhone,
       traderName: traderLabel,
-      amountLabel: formatZAR(centsToRands(amountCents)),
-      paymentUrl: stitch.paymentUrl,
+      amountLabel,
+      pin,
     });
+
+    if (smsLive && !smsSent) {
+      // Still return the PIN on-screen in DEMO_MODE so the demo is not blocked
+      if (process.env.DEMO_MODE !== "true") {
+        return NextResponse.json(
+          {
+            error:
+              "Payment created but SMS failed. On a Twilio trial, verify the customer's number in Twilio first, then try again.",
+            code: "SMS_FAILED",
+            reference,
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    const showPinOnScreen =
+      process.env.DEMO_MODE === "true" || !smsLive;
 
     return NextResponse.json({
       reference,
-      status: stitch.status,
+      status: "PENDING",
       stitchRef: stitch.stitchRef,
       paymentUrl: stitch.paymentUrl,
       mock: stitch.mock,
-      smsSent,
+      smsSent: Boolean(smsSent && smsLive),
+      ...(showPinOnScreen ? { demoPin: pin } : {}),
+      message: smsLive
+        ? showPinOnScreen
+          ? "PIN sent by SMS (also shown for demo)."
+          : "PIN sent to customer. Ask them for the code to confirm."
+        : "Demo PIN shown — configure Twilio to SMS customers.",
     });
   } catch (e) {
     console.error(e);

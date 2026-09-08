@@ -4,10 +4,8 @@ Digital payments for informal traders in South Africa. Accept PayShap payments w
 
 ## Live demo
 
-- **EZIPAY:** https://ezipay.netlify.app  
-- **Imali Pay (original Netlify name):** https://imalipay.netlify.app  
-
-Either URL may work depending on which Netlify site name is active — keep both for backup.
+- **Primary (working):** https://imalipay.netlify.app  
+- **Alternate name:** https://ezipay.netlify.app — currently returns API 404s; use Imali Pay for demos.
 
 ## Quick start (demo)
 
@@ -30,10 +28,11 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Piece | Demo (`DEMO_MODE=true`) | Live (`DEMO_MODE=false` + keys) |
 |---|---|---|
-| OTP SMS | Logged / returned as `demoCode` | Twilio |
+| OTP SMS | Twilio **and** on-screen code when `DEMO_MODE=true` | Twilio only (no on-screen code) |
 | SA ID | Smile **mock** | Smile Enhanced KYC (`/v1/id_verification`) |
 | Liveness | 3s mock | Camera selfie + server image validation (SmartSelfie Web SDK for full anti-spoof) |
-| PayShap QR / phone | Stitch **mock** + Simulate button | GraphQL `clientPaymentInitiationRequestCreate` + status poll + webhook |
+| PayShap QR | Stitch **mock** + Simulate button | GraphQL QR + webhook |
+| Pay by phone | SMS PIN to customer **+** on-screen PIN in demo → trader confirms | SMS PIN only (gateway later) |
 | Sessions | HMAC-signed httpOnly cookie | Same (`SESSION_SECRET`) |
 | Money | Integer **cents** in Postgres | Same |
 

@@ -1,7 +1,9 @@
 /**
  * SMS via Twilio.
  * Sends real SMS whenever TWILIO_* credentials are set.
- * Falls back to console log otherwise.
+ * Falls back to console log otherwise (local / no keys).
+ *
+ * DEMO_MODE only mocks Stitch/Smile — it does NOT disable Twilio.
  */
 
 function hasTwilio(): boolean {
@@ -13,7 +15,16 @@ function hasTwilio(): boolean {
 }
 
 function toE164(phone: string): string {
-  return phone.startsWith("+") ? phone : `+27${phone.replace(/\D/g, "").slice(1)}`;
+  const digits = phone.replace(/\D/g, "");
+  if (phone.trim().startsWith("+")) return `+${digits}`;
+  // SA local 0xxxxxxxxx → +27xxxxxxxxx
+  if (digits.startsWith("0") && digits.length === 10) {
+    return `+27${digits.slice(1)}`;
+  }
+  if (digits.startsWith("27") && digits.length === 11) {
+    return `+${digits}`;
+  }
+  return `+27${digits}`;
 }
 
 export async function sendSms(phone: string, body: string): Promise<boolean> {
@@ -59,21 +70,21 @@ export async function sendSms(phone: string, body: string): Promise<boolean> {
 export async function sendOTP(phone: string, code: string): Promise<boolean> {
   return sendSms(
     phone,
-    `Your EZIPAY code is ${code}. Valid for 5 minutes.`
+    `Your EZIPAY login code is ${code}. Valid for 5 minutes. Do not share this code.`
   );
 }
 
-export async function sendPaymentRequestSms(params: {
+/** Customer approval PIN for phone-pay (stand-in until a real payment gateway). */
+export async function sendPaymentPinSms(params: {
   customerPhone: string;
   traderName: string;
   amountLabel: string;
-  paymentUrl?: string | null;
+  pin: string;
 }): Promise<boolean> {
-  const link = params.paymentUrl
-    ? ` Pay here: ${params.paymentUrl}`
-    : " Open your banking app to approve the PayShap request.";
-
-  const body = `EZIPAY: ${params.traderName} requests ${params.amountLabel}.${link}`;
+  const body =
+    `EZIPAY: ${params.traderName} requests ${params.amountLabel}. ` +
+    `Your confirmation PIN is ${params.pin}. ` +
+    `Tell this PIN to the trader to approve payment. Valid 10 minutes.`;
 
   return sendSms(params.customerPhone, body.slice(0, 320));
 }

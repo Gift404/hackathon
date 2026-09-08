@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateOTP, normalizePhone, validateSAPhone } from "@/lib/utils";
-import { sendOTP } from "@/lib/otp";
+import { sendOTP, isSmsLive } from "@/lib/otp";
 import { hashOtp } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -29,8 +29,12 @@ export async function POST(req: NextRequest) {
     const trader = await prisma.trader.findUnique({ where: { phone } });
     if (!trader) {
       return NextResponse.json(
-        { error: "No account found for this number. Please register first." },
-        { status: 404 }
+        {
+          error:
+            "No account found for this number. Use the same phone you registered with, or sign up.",
+          code: "ACCOUNT_NOT_FOUND",
+        },
+        { status: 400 }
       );
     }
 
@@ -42,18 +46,29 @@ export async function POST(req: NextRequest) {
       data: { phone, codeHash, expiresAt },
     });
 
-    await sendOTP(phone, code);
+    const smsLive = isSmsLive();
+    const sent = await sendOTP(phone, code);
 
-    const demo =
-      process.env.DEMO_MODE === "true" ||
-      !process.env.TWILIO_ACCOUNT_SID ||
-      !process.env.TWILIO_AUTH_TOKEN ||
-      !process.env.TWILIO_PHONE_NUMBER;
+    // Demo safety net: show code on screen when DEMO_MODE=true,
+    // while still sending real SMS when Twilio is configured.
+    const showOnScreen =
+      process.env.DEMO_MODE === "true" || !smsLive;
+
+    if (smsLive && !sent && !showOnScreen) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not send SMS. On a Twilio trial, verify this number in the Twilio console first.",
+          code: "SMS_FAILED",
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      // Only return demoCode when SMS is not live — never leak OTP when Twilio is on
-      ...(demo ? { demoCode: code } : {}),
+      smsSent: Boolean(sent && smsLive),
+      ...(showOnScreen ? { demoCode: code } : {}),
     });
   } catch (e) {
     console.error(e);

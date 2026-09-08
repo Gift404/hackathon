@@ -42,6 +42,9 @@ export default function PayPage() {
   const [phoneError, setPhoneError] = useState("");
   const [dailyLimit, setDailyLimit] = useState(5000);
   const [remaining, setRemaining] = useState(5000);
+  const [customerPin, setCustomerPin] = useState("");
+  const [demoPin, setDemoPin] = useState<string | null>(null);
+  const [pinError, setPinError] = useState("");
 
   const amount = parseAmountRands(amountStr);
 
@@ -180,12 +183,48 @@ export default function PayPage() {
       setPaymentUrl(data.paymentUrl || null);
       setIsMockPayment(data.mock !== false);
       setSmsSent(Boolean(data.smsSent));
+      setDemoPin(data.demoPin || null);
+      setCustomerPin("");
+      setPinError("");
       setPhase("waiting");
-      if (data.smsSent) {
-        toast.success("SMS sent to customer");
+      if (data.smsSent && data.demoPin) {
+        toast.success("PIN sent by SMS — also shown below for demo");
+      } else if (data.smsSent) {
+        toast.success("PIN sent to customer — ask them for the code");
+      } else if (data.demoPin) {
+        toast.message("Demo PIN ready (Twilio not configured or SMS failed)");
       } else {
-        toast.message("Request created — SMS may be delayed (Twilio trial limits)");
+        toast.message("Request created — check SMS / Twilio trial limits");
       }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmCustomerPin() {
+    if (!reference) return;
+    const pin = customerPin.replace(/\D/g, "");
+    if (pin.length !== 6) {
+      setPinError("Enter the 6-digit PIN from the customer");
+      return;
+    }
+    setPinError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/pay/confirm-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference, pin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPinError(data.error || "Incorrect PIN");
+        toast.error(data.error || "Incorrect PIN");
+        return;
+      }
+      await pollStatus(reference);
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -223,6 +262,9 @@ export default function PayPage() {
     setSmsSent(false);
     setReference("");
     setSuccess(null);
+    setCustomerPin("");
+    setDemoPin(null);
+    setPinError("");
   }
 
   if (phase === "success" && success) {
@@ -339,7 +381,7 @@ export default function PayPage() {
               <Smartphone className="h-10 w-10 text-green" />
               <div>
                 <p className="font-heading font-bold text-ink">Phone Number</p>
-                <p className="text-xs text-muted">Send request</p>
+                <p className="text-xs text-muted">SMS PIN to customer</p>
               </div>
             </button>
           </div>
@@ -413,20 +455,46 @@ export default function PayPage() {
       )}
 
       {phase === "waiting" && (
-        <div className="animate-fade-up space-y-6 py-12 text-center">
-          <div className="mx-auto h-20 w-20 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
+        <div className="animate-fade-up space-y-6 py-8 text-center">
           <div>
             <p className="font-heading text-xl font-bold text-ink">
-              Request sent to {maskPhone(normalizePhone(customerPhone))}
+              PIN sent to {maskPhone(normalizePhone(customerPhone))}
             </p>
-            <p className="mt-2 animate-pulse-soft text-muted">
-              Waiting for customer to approve…
+            <p className="mt-2 text-muted">
+              Ask the customer for the 6-digit PIN from their SMS, then enter it
+              below to confirm payment.
             </p>
           </div>
-          <p className="text-sm text-muted">
+          {demoPin && (
+            <p className="rounded-xl bg-gold/10 px-3 py-2 text-sm text-gold-dark">
+              Demo PIN: <strong className="font-mono">{demoPin}</strong>
+            </p>
+          )}
+          <Input
+            label="Customer confirmation PIN"
+            placeholder="6-digit PIN"
+            inputMode="numeric"
+            maxLength={6}
+            value={customerPin}
+            onChange={(e) =>
+              setCustomerPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            error={pinError}
+            autoFocus
+          />
+          <Button
+            fullWidth
+            size="lg"
+            loading={loading}
+            onClick={confirmCustomerPin}
+            disabled={customerPin.length !== 6}
+          >
+            Confirm payment
+          </Button>
+          <p className="text-xs text-muted">
             {smsSent
-              ? "We sent them an SMS and a bank/PayShap request."
-              : "Bank/PayShap request created. SMS needs Twilio (verified numbers on trial)."}
+              ? "SMS delivered via Twilio."
+              : "If SMS did not arrive, verify the number on your Twilio trial."}
           </p>
           {paymentUrl && !isMockPayment && (
             <a
@@ -435,12 +503,12 @@ export default function PayPage() {
               rel="noreferrer"
               className="block text-sm font-medium text-green underline"
             >
-              Open payment link (share with customer)
+              Open payment link (optional)
             </a>
           )}
           {(process.env.NEXT_PUBLIC_DEMO_MODE === "true" || isMockPayment) && (
             <Button variant="secondary" fullWidth loading={loading} onClick={simulatePayment}>
-              Simulate approval
+              Simulate approval (skip PIN)
             </Button>
           )}
           <Button variant="ghost" fullWidth onClick={reset}>

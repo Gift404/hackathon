@@ -54,9 +54,19 @@ export default function RegisterPage() {
           phone: normalizePhone(store.phone),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error(data.error || "Registration failed");
+        if (res.status === 409) {
+          // Existing account — send them to login with the phone they should use
+          const loginPhone =
+            data.loginPhone ||
+            (data.code === "PHONE_EXISTS" ? normalizePhone(store.phone) : "");
+          const q = loginPhone
+            ? `?phone=${encodeURIComponent(loginPhone)}`
+            : "";
+          setTimeout(() => router.push(`/login${q}`), 1200);
+        }
         return;
       }
       setTraderResult(data.trader);
@@ -77,30 +87,11 @@ export default function RegisterPage() {
     if (!traderResult) return;
     setLoading(true);
     try {
-      // Create session via OTP shortcut in demo — auto-login after register
-      const otpRes = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: traderResult.phone }),
-      });
-      const otpData = await otpRes.json();
-      const code = otpData.demoCode || "000000";
-
-      const verifyRes = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: traderResult.phone, code }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) {
-        toast.error(verifyData.error || "Could not sign you in");
-        router.push("/login");
-        return;
-      }
+      // Session cookie was set during /api/register — no OTP needed here.
       setAuth({
-        traderId: verifyData.trader.id,
-        fullName: verifyData.trader.fullName,
-        phone: verifyData.trader.phone,
+        traderId: traderResult.id,
+        fullName: traderResult.fullName,
+        phone: traderResult.phone,
       });
       store.reset();
       router.push("/dashboard");

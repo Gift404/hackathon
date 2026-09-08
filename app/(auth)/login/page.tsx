@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,16 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/lib/store";
 import { validateSAPhone, normalizePhone, maskPhone } from "@/lib/utils";
 import { toast } from "sonner";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setTrader);
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => {
+    const fromQuery = searchParams.get("phone")?.replace(/\D/g, "").slice(0, 10);
+    return fromQuery && /^0[6-8]\d{8}$/.test(fromQuery) ? fromQuery : "";
+  });
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -41,17 +46,30 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: normalizePhone(phone) }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Could not send code");
+        const msg = data.error || "Could not send code";
+        setError(msg);
+        toast.error(msg);
         return;
       }
       if (data.demoCode) setDemoCode(data.demoCode);
+      else setDemoCode(null);
       setStep("otp");
       setResendIn(30);
+      toast.success(
+        data.smsSent && data.demoCode
+          ? "Code sent by SMS — also shown below for demo"
+          : data.smsSent
+            ? "Code sent to your phone"
+            : data.demoCode
+              ? "Demo code ready — enter it below"
+              : "Code ready"
+      );
       setTimeout(() => inputs.current[0]?.focus(), 100);
     } catch {
       setError("Something went wrong");
+      toast.error("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -191,7 +209,15 @@ export default function LoginPage() {
             {error && <p className="text-sm text-danger text-center">{error}</p>}
             {demoCode && (
               <p className="rounded-xl bg-gold/10 px-3 py-2 text-center text-sm text-gold-dark">
-                Demo code: <strong className="font-mono">{demoCode}</strong>
+                {process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+                  ? "Demo / backup code:"
+                  : "Your code:"}{" "}
+                <strong className="font-mono">{demoCode}</strong>
+              </p>
+            )}
+            {!demoCode && (
+              <p className="text-center text-sm text-muted">
+                Check your SMS for the 6-digit code.
               </p>
             )}
             <Button
@@ -231,5 +257,19 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center text-muted">
+          Loading…
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

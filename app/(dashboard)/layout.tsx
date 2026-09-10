@@ -9,7 +9,7 @@ export default async function DashboardLayout({
 }) {
   const trader = await getCurrentTrader();
   if (!trader) {
-    redirect("/login");
+    redirect("/api/auth/demo-skip");
   }
 
   return (

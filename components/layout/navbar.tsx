@@ -21,12 +21,12 @@ export function Navbar() {
             How it works
           </a>
           <Link
-            href="/login"
+            href="/dashboard"
             className="text-sm font-medium text-ink/70 hover:text-ink transition-colors"
           >
             Sign in
           </Link>
-          <Link href="/register">
+          <Link href="/dashboard">
             <Button size="sm">Get started free</Button>
           </Link>
         </nav>
@@ -49,13 +49,13 @@ export function Navbar() {
               How it works
             </a>
             <Link
-              href="/login"
+              href="/dashboard"
               className="min-h-[48px] flex items-center text-ink font-medium"
               onClick={() => setOpen(false)}
             >
               Sign in
             </Link>
-            <Link href="/register" onClick={() => setOpen(false)}>
+            <Link href="/dashboard" onClick={() => setOpen(false)}>
               <Button fullWidth>Get started free</Button>
             </Link>
           </div>

@@ -90,7 +90,7 @@ export default function ProfilePage() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       clearAuth();
-      router.push("/login");
+      router.push("/");
     } catch {
       toast.error("Could not sign out");
     } finally {

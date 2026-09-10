@@ -32,7 +32,7 @@ export default function LandingPage() {
               under 2 minutes.
             </p>
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Link href="/register">
+              <Link href="/dashboard">
                 <Button size="lg" fullWidth className="sm:w-auto">
                   Get started free
                 </Button>
@@ -194,7 +194,7 @@ export default function LandingPage() {
             Ready to get paid digitally?
           </h2>
           <p className="mt-2 text-muted">Free to start. Under 2 minutes to go live.</p>
-          <Link href="/register" className="mt-6 inline-block">
+          <Link href="/dashboard" className="mt-6 inline-block">
             <Button size="lg">Get started free</Button>
           </Link>
         </div>

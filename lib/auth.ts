@@ -8,16 +8,31 @@ import {
 } from "./crypto";
 import { centsToRands } from "./money";
 
+export const DEMO_TRADER_PHONE = "0821234567";
+
+export function sessionCookieAttributes() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: SESSION_MAX_AGE_SEC,
+    path: "/",
+  };
+}
+
 export async function createSession(traderId: string) {
   const token = createSessionToken(traderId, SESSION_MAX_AGE_SEC);
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_MAX_AGE_SEC,
-    path: "/",
-  });
+  cookieStore.set(SESSION_COOKIE, token, sessionCookieAttributes());
+}
+
+/** Seeded pitch trader, or any active trader if the seed phone is missing. */
+export async function findDemoTrader() {
+  return (
+    (await prisma.trader.findUnique({
+      where: { phone: DEMO_TRADER_PHONE },
+    })) ?? (await prisma.trader.findFirst({ where: { active: true } }))
+  );
 }
 
 export async function destroySession() {

@@ -8,7 +8,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const trader = await getCurrentTrader();
-  if (!trader) {
+  if (!trader || !trader.phone.endsWith("628138307")) {
     redirect("/api/auth/demo-skip");
   }
 

@@ -21,7 +21,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Demo login
 
-- Phone: `0821234567`
+- Phone: `0628138307`
 - OTP: shown on screen in demo mode (also logged in the terminal)
 
 ## What is real vs mocked

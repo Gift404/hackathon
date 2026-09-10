@@ -8,7 +8,7 @@ import {
 } from "./crypto";
 import { centsToRands } from "./money";
 
-export const DEMO_TRADER_PHONE = "0821234567";
+export const DEMO_TRADER_PHONE = "0628138307";
 
 export function sessionCookieAttributes() {
   return {
@@ -26,13 +26,21 @@ export async function createSession(traderId: string) {
   cookieStore.set(SESSION_COOKIE, token, sessionCookieAttributes());
 }
 
-/** Seeded pitch trader, or any active trader if the seed phone is missing. */
+/** Pitch default: the live trader with transaction history. */
 export async function findDemoTrader() {
-  return (
-    (await prisma.trader.findUnique({
-      where: { phone: DEMO_TRADER_PHONE },
-    })) ?? (await prisma.trader.findFirst({ where: { active: true } }))
-  );
+  const variants = [
+    DEMO_TRADER_PHONE,
+    "628138307",
+    "27628138307",
+    "+27628138307",
+  ];
+  for (const phone of variants) {
+    const trader = await prisma.trader.findUnique({ where: { phone } });
+    if (trader) return trader;
+  }
+  return prisma.trader.findFirst({
+    where: { phone: { endsWith: "628138307" } },
+  });
 }
 
 export async function destroySession() {
